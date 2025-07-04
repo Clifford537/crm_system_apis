@@ -7,7 +7,7 @@ const User = require('../models/user.model');
 exports.register = async (req, res) => {
   try {
     const {
-      firstName, lastName, email, phoneNumber, password, role,
+      firstName, lastName, email, phoneNumber, password 
     } = req.body;
 
     // Check if user already exists
@@ -23,7 +23,7 @@ exports.register = async (req, res) => {
       email,
       phoneNumber,
       password: hashed,
-      role: ['admin', 'user'].includes(role) ? role : 'user',
+      // role: ['admin', 'user'].includes(role) ? role : 'user',
       passport: req.files?.passport?.[0]?.filename || '',
       idImageFront: req.files?.front?.[0]?.filename || '',
       idImageBack: req.files?.back?.[0]?.filename || '',
@@ -100,13 +100,32 @@ exports.getAllUsers = async (_, res) => {
 // UPDATE USER BY ADMIN
 exports.updateUserById = async (req, res) => {
   try {
-    const [affected] = await User.update(req.body, { where: { id: req.params.id } });
+    const updates = { ...req.body };
+
+    // If multer uploaded files, assign filenames to updates
+    if (req.files?.passport?.[0]) {
+      updates.passport = req.files.passport[0].filename;
+    }
+
+    if (req.files?.front?.[0]) {
+      updates.idImageFront = req.files.front[0].filename;
+    }
+
+    if (req.files?.back?.[0]) {
+      updates.idImageBack = req.files.back[0].filename;
+    }
+
+    // Perform the update
+    const [affected] = await User.update(updates, {
+      where: { id: req.params.id }
+    });
 
     if (!affected) return res.status(404).json({ message: 'User not found' });
 
-    const user = await User.findByPk(req.params.id);
-    res.json(user);
+    const updatedUser = await User.findByPk(req.params.id);
+    res.json(updatedUser);
   } catch (err) {
+    console.error('Admin update error:', err); 
     res.status(500).json({ message: 'Update failed', error: err.message });
   }
 };
